@@ -132,7 +132,7 @@
 
         setLoading(true);
         try {
-          const resp = await fetch('/api/ask', { method: 'POST', body: formData });
+          const resp = await fetch('https://d44192b680ec.ngrok-free.app/api/ask', { method: 'POST', body: formData });
           const data = await resp.json();
           if (!resp.ok) throw new Error(data.error || 'request failed');
           answerDiv.textContent = data.answer;

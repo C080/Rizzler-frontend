@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>The Rizzler</title>
+    <style>
+      /* Old-school meme/terminal vibes */
+      :root {
+        --bg: #000;
+        --fg: #39ff14; /* neon green */
+        --muted: #9effa0;
+        --accent: #ff00ff; /* magenta pop */
+      }
+      html, body {
+        margin: 0; padding: 0; height: 100%;
+        background: var(--bg);
+        color: var(--fg);
+        font-family: "Comic Sans MS", "Comic Sans", Impact, system-ui, sans-serif;
+      }
+      .wrap {
+        max-width: 760px; margin: 0 auto; padding: 16px;
+      }
+      .box {
+        border: 2px dashed var(--fg);
+        padding: 16px; border-radius: 8px;
+        background: rgba(57, 255, 20, 0.05);
+      }
+      h1 { text-align: center; letter-spacing: 1px; }
+      .tagline { text-align: center; color: var(--muted); margin-top: -6px; }
+      .dropzone {
+        margin-top: 16px; text-align: center; cursor: pointer;
+        padding: 24px; border: 2px dotted var(--muted); border-radius: 8px;
+      }
+      .dropzone.dragover { background: rgba(255, 0, 255, 0.08); }
+      .preview { display: none; margin-top: 12px; }
+      .answer { white-space: pre-wrap; font-size: 1.15rem; color: #fff; }
+      .small { color: var(--muted); font-size: 0.9rem; }
+      .btn { margin-top: 10px; background: var(--accent); color: #fff; border: 0; padding: 10px 14px; border-radius: 6px; cursor: pointer; }
+      .btn:disabled { opacity: 0.7; cursor: wait; }
+      input[type="text"] { width: 100%; padding: 10px; border-radius: 6px; border: 1px solid var(--muted); background: #111; color: #fff; }
+      footer { margin-top: 22px; text-align: center; color: var(--muted); }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <h1>The Rizzler</h1>
+      <p class="tagline">Give me a Tinder/Bumble/whatever screenshot and I'll help you get laid.</p>
+
+      <div class="box">
+        <div id="dropzone" class="dropzone">
+          <p>drag & drop image here — or click</p>
+          <input id="fileInput" type="file" accept="image/png,image/jpeg,image/webp" style="display:none" />
+        </div>
+        <div class="preview" id="preview">
+          <img id="previewImg" alt="preview" style="max-width: 100%; height: auto; border-radius: 6px;" />
+        </div>
+        <form id="askForm" style="margin-top: 12px;">
+          <label for="prompt" class="small">optional flavor (e.g., "confident but sweet")</label>
+          <input id="prompt" name="prompt" type="text" placeholder="leave blank for default vibe" />
+          <button id="submitBtn" type="submit" class="btn">summon reply</button>
+        </form>
+      </div>
+
+      <div class="box" style="margin-top: 16px;">
+        <div class="small">answer</div>
+        <div id="answer" class="answer"></div>
+      </div>
+
+      <footer class="small">pls don't send illegal stuff.</footer>
+    </div>
+
+    <script>
+      const dropzone = document.getElementById('dropzone');
+      const fileInput = document.getElementById('fileInput');
+      const preview = document.getElementById('preview');
+      const previewImg = document.getElementById('previewImg');
+      const askForm = document.getElementById('askForm');
+      const answerDiv = document.getElementById('answer');
+      const submitBtn = document.getElementById('submitBtn');
+
+      let fileToSend = null;
+
+      function showPreview(file) {
+        if (!file) return;
+        const url = URL.createObjectURL(file);
+        previewImg.src = url;
+        preview.style.display = 'block';
+      }
+
+      function setLoading(loading) {
+        submitBtn.disabled = loading;
+        submitBtn.textContent = loading ? 'thinking…' : 'summon reply';
+      }
+
+      dropzone.addEventListener('click', () => fileInput.click());
+      dropzone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropzone.classList.add('dragover');
+      });
+      dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+      dropzone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropzone.classList.remove('dragover');
+        const file = e.dataTransfer.files[0];
+        if (file) {
+          fileToSend = file;
+          showPreview(file);
+        }
+      });
+      fileInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          fileToSend = file;
+          showPreview(file);
+        }
+      });
+
+      askForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        answerDiv.textContent = '';
+
+        if (!fileToSend) {
+          answerDiv.textContent = 'drop an image first';
+          return;
+        }
+
+        const formData = new FormData();
+        formData.append('image', fileToSend);
+        const prompt = document.getElementById('prompt').value;
+        if (prompt) formData.append('prompt', prompt);
+
+        setLoading(true);
+        try {
+          const resp = await fetch('/api/ask', { method: 'POST', body: formData });
+          const data = await resp.json();
+          if (!resp.ok) throw new Error(data.error || 'request failed');
+          answerDiv.textContent = data.answer;
+        } catch (err) {
+          answerDiv.textContent = 'error: ' + err.message;
+        } finally {
+          setLoading(false);
+        }
+      });
+    </script>
+  </body>
+  </html>
+
+
